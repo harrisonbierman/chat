@@ -45,28 +45,30 @@ int main() {
 		perror("Bind failed");
 		exit(EXIT_FAILURE);
 	}
-	
-	// Listen for a connection (backlog of 3)
+
+		// Listen for a connection (backlog of 3)
 	if (listen(server_fd, 3) < 0) {
 		perror("Listen");
 		exit(EXIT_FAILURE);
 	}
 	printf("Server is listening on port %d\n", PORT);
 
-	// Accept on incoming connection
-	// the socket description, the address of the socket, and the length of the socket
-	if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-		perror("Accept");
-		exit(EXIT_FAILURE);
+	while (1) {	
+		// Accept on incoming connection
+		// the socket description, the address of the socket, and the length of the socket
+		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+			perror("Accept");
+			exit(EXIT_FAILURE);
+		}
+
+		// Read data from the client
+		int valread = read(new_socket, buffer, BUFFER_SIZE);
+		printf("Reveived: %s\n", buffer);
+
+		// Echo the data back to the client
+		send(new_socket, buffer, strlen(buffer), 0);
+		printf("Echo sent\n");
 	}
-
-	// Read data from the client
-	int valread = read(new_socket, buffer, BUFFER_SIZE);
-	printf("Reveived: %s\n", buffer);
-
-	// Echo the data back to the client
-	send(new_socket, buffer, strlen(buffer), 0);
-	printf("Echo sent\n");
 
 	//close the connection and socket
 	close(new_socket);

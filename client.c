@@ -44,7 +44,8 @@ int main() {
 	// Read the echoed message
 	int valread = read(sock, buffer, BUFFER_SIZE);
 	printf("Echo from server: %s\n", buffer);
-
+	
+	while(1) {}
 	//Close the socket
 	close(sock);
 	return 0;
