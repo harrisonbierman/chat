@@ -37,15 +37,24 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	// Send the Message
-	send(sock, message, strlen(message), 0);
-	printf("Message send: %s\n", message);
-
-	// Read the echoed message
-	int valread = read(sock, buffer, BUFFER_SIZE);
-	printf("Echo from server: %s\n", buffer);
 	
-	while(1) {}
+	
+	while (1) {
+		char user_input[120];
+		printf("write something to the server: ");
+		fgets(user_input, sizeof(user_input), stdin);
+		printf("\033[A");
+		printf("\r\033[2K");
+
+		// Send the Message
+		send(sock, user_input, strlen(user_input), 0);
+		printf("client: %s", user_input);
+
+		int valread = read(sock, buffer, BUFFER_SIZE);
+		printf("server: %s", buffer);
+		
+	}
+	
 	//Close the socket
 	close(sock);
 	return 0;

@@ -9,7 +9,7 @@
 
 int main() {
 	// server_fd = server file descriptor, refers to socket created
-	int server_fd, new_socket;		
+	int server_fd, client_socket;		
 	// a struct from <netinet/in.h> from <arpa/inet.h>
 	struct sockaddr_in address; 
 	int opt = 1;
@@ -21,6 +21,7 @@ int main() {
 	// third agrument '0' is an unspecified default protocol
 	// returns a non-negative integer if successful
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	printf("this is the servers listening socket: %d\n", server_fd);
 	if (server_fd == -1) {
 		perror("Socket creation failed");
 		exit(EXIT_FAILURE);
@@ -46,32 +47,55 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-		// Listen for a connection (backlog of 3)
+	// Listen for a connection (backlog of 3)
 	if (listen(server_fd, 3) < 0) {
 		perror("Listen");
 		exit(EXIT_FAILURE);
 	}
 	printf("Server is listening on port %d\n", PORT);
 
-	while (1) {	
+
+	while (1) {
 		// Accept on incoming connection
 		// the socket description, the address of the socket, and the length of the socket
-		if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-			perror("Accept");
-			exit(EXIT_FAILURE);
+		client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+		if (client_socket < 0) {
+			perror("Accept Failed");
+			continue;
 		}
 
-		// Read data from the client
-		int valread = read(new_socket, buffer, BUFFER_SIZE);
-		printf("Reveived: %s\n", buffer);
+		int pid = fork();
+		if (pid == 0) {
+			// child process
+			close(server_fd); // child doesn't need listening socket
 
-		// Echo the data back to the client
-		send(new_socket, buffer, strlen(buffer), 0);
-		printf("Echo sent\n");
+			printf("New Client Connected FD: %d\n", client_socket);
+
+			clear(0);
+			while (1) {	
+				// Read data from the client
+				memset(buffer, 0, BUFFER_SIZE);// clears to buffer for next read
+				int valread = read(client_socket, buffer, BUFFER_SIZE);
+				if (valread == 0) {
+					printf("client disconnected");
+					break;
+				}
+				printf("client: %s", buffer);
+				
+				//send messgage to client
+				char user_input[120];
+				printf("Send a message to the client: ");
+				fgets(user_input, sizeof(user_input), stdin);
+				printf("\033[A");
+				printf("\r\033[2K");
+
+				send(client_socket, user_input, sizeof(user_input), 0);
+				printf("server: %s", user_input);
+			}
+			//close the connection and socket
+			close(client_socket);
+			close(server_fd);
+			return 0;
+		}
 	}
-
-	//close the connection and socket
-	close(new_socket);
-	close(server_fd);
-	return 0;
 }
