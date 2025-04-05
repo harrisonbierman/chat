@@ -9,7 +9,60 @@
 
 #define PORT 65432
 #define BUFFER_SIZE 1024
+#define MAX_CLIENTS 1
 #define MAX_EVENTS 10
+#define SERVER_FULL "Server Full: You have been kick from the server"
+
+typedef struct Package {
+	int client_id;
+	char message[1024];
+} Package;
+
+void serialize_package(uint8_t *buf, struct Package *pkg) {
+	int offset = 0;
+
+	memcpy(buf + offset, &pkg->client_id, sizeof(pkg->client_id));
+	offset += sizeof(pkg->client_id);
+
+	memcpy(buf + offset, &pkg->message, sizeof(pkg->message));
+}
+
+void deserialize_package(struct Package *pkg, uint8_t *buf) {
+	int offset = 0;
+
+	memcpy(&pkg->client_id, buf + offset, sizeof(pkg->client_id));
+	offset += sizeof(pkg->client_id);
+
+	memcpy(&pkg->message, buf + offset, sizeof(pkg->message));
+}
+
+void add_item(int *arr, int item, int length) {
+	for(int i = 0; i < length; i++) {
+		if (arr[i] == 0) {
+			arr[i] = item;
+			break;
+		} 
+	}
+}
+
+void remove_item(int *arr, int item, int length) {
+	for(int i = 0; i < length; i++) {
+		if(arr[i] == item) {
+			arr[i] = 0;
+			break;
+		}
+	}
+}
+
+void print_array(int *arr, int length) {
+	printf("{");
+	for (int i = 0; i < length; i++) {
+		printf("%d", *(arr + i));
+		if (i < length - 1) printf(", ");
+	}
+	printf("}\n");
+}
+
 
 void make_socket_non_blocking(int fd) {
 	int flags = fcntl(fd, F_GETFL, 0);
@@ -85,11 +138,13 @@ int main() {
 
 	struct epoll_event events[MAX_EVENTS];
 
+	int registered_clients[MAX_CLIENTS] = {0};
+
 	// event loop
 	while (1) {
 		// returns how many events are on the ready list
 		// -1 blocks indefinitely until at least one event is ready
-		printf("waiting for next event...\n");
+		printf("waiting for next event...\n\n");
 		int n = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
 		printf("event deployed\n");
 		for (int i = 0; i < n; i++) {
@@ -106,20 +161,51 @@ int main() {
 					.events = EPOLLIN,
 					.data.fd = client_fd,
 				};
+					
+				int is_full = 1;
+				for(int i = 0; i < MAX_CLIENTS; i++) {
+					if (registered_clients[i] == 0) {
+						is_full = 0;
+						break;
+					}
+				}
 
-				epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &client_event);
-				printf("Accepted new client: %d\n", client_fd);
+				if(is_full) {
+					write(client_fd, SERVER_FULL, sizeof(SERVER_FULL));
+					close(client_fd);
+				} else {
+					// need to keep track of clients manually
+					add_item(registered_clients, client_fd, MAX_CLIENTS);
+					epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &client_event);
+					printf("Accepted new client: %d\n", client_fd);
+					printf("Clients Connected: ");
+					print_array(registered_clients, MAX_CLIENTS);
+				}
+
+				// send client fd number as their ID
+				write(client_fd, &client_fd, sizeof(client_fd));
 			} else {
 				// if it is a client event
-				char buf[1024];
-				int valread = read(events[i].data.fd, buf, sizeof(buf));
-				if (valread <= 0) {
+				Package pkg;
+				uint8_t ser_pkg[sizeof(struct Package)];
+				int count = read(events[i].data.fd, ser_pkg, sizeof(ser_pkg));
+				if (count <= 0) {
 					// client disconnected or error
 					close(events[i].data.fd);
 					printf("Closed client: %d\n", events[i].data.fd);
+					remove_item(registered_clients, events[i].data.fd, MAX_CLIENTS);
+					printf("Clients Connected: ");
+					print_array(registered_clients, MAX_CLIENTS);
 				} else {
 					// Echo back
-					write(events[i].data.fd, buf, valread);
+					deserialize_package(&pkg, ser_pkg);
+					printf("package recieved from client: %d\n", pkg.client_id);
+					printf("with message: %s\n", pkg.message);
+					for(int i = 0; i < MAX_CLIENTS; i++) {
+						if(registered_clients[i] != 0) {
+							write(registered_clients[i], ser_pkg, count);
+						}
+					}
 				}
 			}
 		}

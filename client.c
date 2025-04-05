@@ -3,9 +3,43 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 #define PORT 65432
 #define BUFFER_SIZE 1024
+
+typedef struct Package {
+	int client_id;
+	char message[1024];
+} Package;
+
+void serialize_package(uint8_t *buf, struct Package *pkg) {
+	int offset = 0;
+
+	memcpy(buf + offset, &pkg->client_id, sizeof(pkg->client_id));
+	offset += sizeof(pkg->client_id);
+
+	memcpy(buf + offset, &pkg->message, sizeof(pkg->message));
+}
+
+void deserialize_package(struct Package *pkg, uint8_t *buf) {
+	int offset = 0;
+
+	memcpy(&pkg->client_id, buf + offset, sizeof(pkg->client_id));
+	offset += sizeof(pkg->client_id);
+
+	memcpy(&pkg->message, buf + offset, sizeof(pkg->message));
+}
+
+void make_socket_non_blocking(int fd) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	// the reason for this is to add O_NONBLOCK to the 
+	// existing flags and not to override them
+	// since the options use bit position using the 
+	// or operator combinds the bits together 
+	// ex: 0010 | 1000 = 1010
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
 
 int main() {
 
@@ -35,22 +69,57 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	
+	//make_socket_non_blocking(client_fd);
+
+	// server gives client unique id
+	int client_id;
+	read(client_fd, &client_id, sizeof(client_id));
+
+	printf("Welcome to the server!\nYour ID is: %d\n", client_id);
+
 	
 	while (1) {
-		char buf[1024];
-		printf("write something to the server: ");
-		fgets(buf, sizeof(buf), stdin);
-		printf("\033[A");
-		printf("\r\033[2K");
+		// child process for sending
+		if(fork() == 0) {
+			char msg[1024];
+			// printf("write something to the chat: \n");
+			fgets(msg, sizeof(msg), stdin);
+			printf("\033[A");
+			printf("\r\033[2K");
 
-		// Send the Message
-		send(client_fd, buf, strlen(buf), 0);
-		printf("client: %s", buf);
+			// create package 
+			Package pkg = {
+				.client_id = client_id,
+			};
+			
+			// need to memset because even though the Package struct
+			// is on the stack and memory allocated. The memory in
+			// the spot where the message is suppose to go is data
+			// that has been left over. So we got to zero it
+			memset(pkg.message, 0, sizeof(pkg.message));
+			memcpy(pkg.message, msg, strnlen(msg, sizeof(pkg.message) - 1)); 
+			pkg.message[sizeof(pkg.message) - 1] = '\0';
 
-		int valread = read(client_fd, buf, BUFFER_SIZE);
-		printf("server: %s", buf);
-		
+			uint8_t ser_pkg[sizeof(struct Package)];
+
+			serialize_package(ser_pkg, &pkg);	
+
+			// Send the Message
+			send(client_fd, &ser_pkg, sizeof(ser_pkg), 0);
+			//printf("client %d: %s\n", pkg.client_id, pkg.message);
+
+			exit(0);
+		}
+		Package received_pkg;
+		uint8_t ser_rec_pkg[sizeof(struct Package)];
+
+		int count = read(client_fd, ser_rec_pkg, sizeof(struct Package));
+		deserialize_package(&received_pkg, ser_rec_pkg);
+		if (received_pkg.client_id == client_fd) {
+			printf("Me: %s", received_pkg.message);
+		} else {
+			printf("client %d: %s", received_pkg.client_id, received_pkg.message);
+		}
 	}
 	
 	//Close the socket
