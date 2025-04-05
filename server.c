@@ -9,9 +9,8 @@
 
 #define PORT 65432
 #define BUFFER_SIZE 1024
-#define MAX_CLIENTS 1
+#define MAX_CLIENTS 2
 #define MAX_EVENTS 10
-#define SERVER_FULL "Server Full: You have been kick from the server"
 
 typedef struct Package {
 	int client_id;
@@ -123,6 +122,7 @@ int main() {
 	}
 
 	printf("Server is listening on port %d\n", PORT);
+	printf("Maximum clients allowed: %d\n", MAX_CLIENTS);
 
 	int epoll_fd = epoll_create1(0);
 
@@ -146,7 +146,7 @@ int main() {
 		// -1 blocks indefinitely until at least one event is ready
 		printf("waiting for next event...\n\n");
 		int n = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
-		printf("event deployed\n");
+		printf("event triggered\n");
 		for (int i = 0; i < n; i++) {
 			// if server is on the ready list
 			if (events[i].data.fd == server_fd) {
@@ -162,6 +162,7 @@ int main() {
 					.data.fd = client_fd,
 				};
 					
+				// kick client if max clients is reached
 				int is_full = 1;
 				for(int i = 0; i < MAX_CLIENTS; i++) {
 					if (registered_clients[i] == 0) {
@@ -170,25 +171,27 @@ int main() {
 					}
 				}
 
+
+				// need to keep track of clients manually
+				add_item(registered_clients, client_fd, MAX_CLIENTS);
+				epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &client_event);
+				printf("Accepted new client: %d\n", client_fd);
+				printf("Clients Connected: ");
+				print_array(registered_clients, MAX_CLIENTS);
+
+				// maybe tell the client why
 				if(is_full) {
-					write(client_fd, SERVER_FULL, sizeof(SERVER_FULL));
 					close(client_fd);
-				} else {
-					// need to keep track of clients manually
-					add_item(registered_clients, client_fd, MAX_CLIENTS);
-					epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &client_event);
-					printf("Accepted new client: %d\n", client_fd);
-					printf("Clients Connected: ");
-					print_array(registered_clients, MAX_CLIENTS);
+					printf("Client \"%d\" kicked from server: server full\n", client_fd);
 				}
 
 				// send client fd number as their ID
-				write(client_fd, &client_fd, sizeof(client_fd));
+				send(client_fd, &client_fd, sizeof(client_fd), 0);
 			} else {
 				// if it is a client event
 				Package pkg;
 				uint8_t ser_pkg[sizeof(struct Package)];
-				int count = read(events[i].data.fd, ser_pkg, sizeof(ser_pkg));
+				int count = recv(events[i].data.fd, ser_pkg, sizeof(ser_pkg), 0);
 				if (count <= 0) {
 					// client disconnected or error
 					close(events[i].data.fd);

@@ -79,13 +79,15 @@ int main() {
 
 	
 	while (1) {
-		// child process for sending
 		if(fork() == 0) {
+			// child process for sending
 			char msg[1024];
-			// printf("write something to the chat: \n");
+			// blocking
 			fgets(msg, sizeof(msg), stdin);
 			printf("\033[A");
 			printf("\r\033[2K");
+			
+			printf("Me: %s", msg);
 
 			// create package 
 			Package pkg = {
@@ -102,7 +104,7 @@ int main() {
 
 			uint8_t ser_pkg[sizeof(struct Package)];
 
-			serialize_package(ser_pkg, &pkg);	
+			serialize_package(ser_pkg, &pkg);
 
 			// Send the Message
 			send(client_fd, &ser_pkg, sizeof(ser_pkg), 0);
@@ -110,15 +112,22 @@ int main() {
 
 			exit(0);
 		}
+
+		// main process for receiving
 		Package received_pkg;
 		uint8_t ser_rec_pkg[sizeof(struct Package)];
 
 		int count = read(client_fd, ser_rec_pkg, sizeof(struct Package));
+		if(count <= 0) {
+			printf("You disconnected\n");
+			close(client_fd);
+			return 0;
+		}
+
 		deserialize_package(&received_pkg, ser_rec_pkg);
-		if (received_pkg.client_id == client_fd) {
-			printf("Me: %s", received_pkg.message);
-		} else {
-			printf("client %d: %s", received_pkg.client_id, received_pkg.message);
+
+		if (received_pkg.client_id != client_id) {
+			printf("Client %d: %s", received_pkg.client_id, received_pkg.message);
 		}
 	}
 	
