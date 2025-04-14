@@ -1,0 +1,7 @@
+services:
+    server:
+        image: alpine-c-server
+        ports:
+          - "65432:65432"
+        stdin_open: true # interact tag -i
+        tty: true # -t tag

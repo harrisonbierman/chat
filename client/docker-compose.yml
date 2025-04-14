@@ -1,0 +1,4 @@
+image: alpine-c-client
+stdin_open: true # interact tag -i
+tty: true # -t tag
+   

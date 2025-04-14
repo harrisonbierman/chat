@@ -6,6 +6,9 @@
 #include <fcntl.h>
 
 #define PORT 65432
+#define LOCAL_HOST "127.0.0.1"
+#define LAN_IP "192.168.0.131"
+#define LINVEO_IP "141.140.12.190"
 #define BUFFER_SIZE 1024
 
 typedef struct Package {
@@ -42,7 +45,7 @@ void make_socket_non_blocking(int fd) {
 }
 
 int main() {
-
+	
 	// define socket address
 	struct sockaddr_in server_address = {
 		.sin_family = AF_INET,
@@ -58,7 +61,7 @@ int main() {
 
 	// Convert IPv4 address from text to binary form
 	// store it into the server_address.sin_addr
-	if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0) {
+	if (inet_pton(AF_INET, LAN_IP, &server_address.sin_addr) <= 0) {
 		perror("Invalid address/ Address not supported\n");
 		exit(EXIT_FAILURE);
 	}
@@ -68,6 +71,7 @@ int main() {
 		perror("Connection Failed\n");
 		exit(EXIT_FAILURE);
 	}
+
 
 	//make_socket_non_blocking(client_fd);
 
@@ -82,7 +86,7 @@ int main() {
 		if(fork() == 0) {
 			// child process for sending
 			char msg[1024];
-			// blocking
+			// blocking 
 			fgets(msg, sizeof(msg), stdin);
 			printf("\033[A");
 			printf("\r\033[2K");
@@ -117,7 +121,7 @@ int main() {
 		Package received_pkg;
 		uint8_t ser_rec_pkg[sizeof(struct Package)];
 
-		int count = read(client_fd, ser_rec_pkg, sizeof(struct Package));
+		int count = recv(client_fd, ser_rec_pkg, sizeof(struct Package), 0);
 		if(count <= 0) {
 			printf("You disconnected\n");
 			close(client_fd);

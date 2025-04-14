@@ -9,7 +9,7 @@
 
 #define PORT 65432
 #define BUFFER_SIZE 1024
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 3
 #define MAX_EVENTS 10
 
 typedef struct Package {
@@ -81,7 +81,7 @@ int main() {
 	struct sockaddr_in address = {
 		// Bind the socket to localhost and PORT
 		.sin_family = AF_INET,
-		.sin_addr.s_addr = INADDR_ANY,
+		.sin_addr.s_addr = inet_addr("0.0.0.0"), //What we want to listen on
 		.sin_port = htons(PORT), // host to network byte order short
 	};
 
