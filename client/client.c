@@ -61,7 +61,7 @@ int main() {
 
 	// Convert IPv4 address from text to binary form
 	// store it into the server_address.sin_addr
-	if (inet_pton(AF_INET, LAN_IP, &server_address.sin_addr) <= 0) {
+	if (inet_pton(AF_INET, LOCAL_HOST, &server_address.sin_addr) <= 0) {
 		perror("Invalid address/ Address not supported\n");
 		exit(EXIT_FAILURE);
 	}

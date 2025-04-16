@@ -1,6 +1,7 @@
-FROM alpine:3.18 AS builder
+FROM archlinux:latest AS builder
 
-RUN apk add --no-cache gcc musl-dev build-base net-tools
+RUN pacman -Syu --noconfirm gcc base-devel net-tools git
+RUN pacman -S --noconfirm alsa-lib mesa libx11 libxrandr libxi libxcursor libxinerama
 
 WORKDIR /app
 
@@ -10,11 +11,11 @@ COPY client.c .
 RUN gcc -o client client.c 
 
 
-FROM alpine:3.18 
+FROM archlinux:latest 
 
 WORKDIR /app
 
-RUN adduser -D client
+RUN useradd -m client
 
 USER client
 

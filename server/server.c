@@ -121,7 +121,7 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Server is listening on port %d\n", PORT);
+	printf("Server is kind of listening on port %d\n", PORT);
 	printf("Maximum clients allowed: %d\n", MAX_CLIENTS);
 
 	int epoll_fd = epoll_create1(0);

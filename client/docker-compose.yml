@@ -1,4 +1,7 @@
-image: alpine-c-client
-stdin_open: true # interact tag -i
-tty: true # -t tag
+services:
+  client:
+    build: .
+    image: arch-c-client
+    stdin_open: true # interact tag -i
+    tty: true # -t tag
    
