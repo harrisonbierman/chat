@@ -1,0 +1,23 @@
+" ============================================================================
+" Netrw Directory Listing                                        (netrw v175)
+"   /home/harrison/c/server_fun/berkeley_socket
+"   Sorted by      name
+"   Sort sequence: [\/]$,\<core\%(\.\d\+\)\=\>,\.h$,\.c$,\.cpp$,\~\=\*$,*,\.o$,\.obj$,\.info$,\.swp$,\.bak$,\~$
+"   Quick Help: <F1>:help  -:go up dir  D:delete  R:rename  s:sort-by  x:special
+" ==============================================================================
+../
+berkeley_socket/
+| .cache/
+| .git/
+| assets/
+| client/
+| include/
+| lib/
+| server/
+| main.c
+| util.c
+| main*
+| run.sh*
+| util*
+| Makefile
+| compile_commands.json
